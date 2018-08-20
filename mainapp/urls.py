@@ -7,7 +7,7 @@ urlpatterns = [
     path('', views.HomePageView.as_view(), name='home'),
     path('ngo-volunteer/', views.NgoVolunteerView.as_view(), name='ngovolunteerview'),
     path('map-view/', views.MapView.as_view(), name='mapview'),
-    path('request/', views.CreateRequest.as_view(), name='requestview'),
+    path('request/', views.CreateRequest.as_view(), name='requestview'),    
     # path('volunteer/', views.Maintenance.as_view(), name='registerview'),
     path('volunteer/', views.RegisterVolunteer.as_view(), name='registerview'),
     path('volunteerdata/', views.volunteerdata, name='volunteerdata'),
@@ -45,4 +45,7 @@ urlpatterns = [
     path('announcements/', views.announcements, name="Announcements"),
     path('camp_requirements/', views.camp_requirements_list, name='camp_requirements_list'),
     path('submission_success/', views.SubmissionSuccess.as_view(), name='submission_success'),
+    url(r'request_updates/(?P<request_id>\d+)/$', views.RequestUpdatesView.as_view(), name='requestupdatesview'),
+    path('req_updates_success/', views.ReqUpdatesSuccess.as_view(), name='req_updates_success')
+    
 ]

@@ -6,7 +6,7 @@ from django.views.generic.base import TemplateView
 from mainapp.redis_queue import sms_queue
 from mainapp.sms_handler import send_confirmation_sms
 from .models import Request, Volunteer, DistrictManager, Contributor, DistrictNeed, Person, RescueCamp, NGO, \
-    Announcements , districts
+    Announcements , districts, RequestUpdates
 import django_filters
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
 from django.http import JsonResponse
@@ -16,16 +16,21 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.messages.views import SuccessMessageMixin
 from django.contrib.auth import logout
 from django.contrib import admin
-from django.shortcuts import redirect
+from django.shortcuts import redirect, get_object_or_404
 from django.db.models import Count, QuerySet
 from django.core.cache import cache
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
+from django.utils.decorators import method_decorator
 from django.urls import reverse
 from django.core.exceptions import PermissionDenied, ObjectDoesNotExist
 from django.http import Http404
 from mainapp.admin import create_csv_response
+from datetime import date
+
 import csv
+
+import sys
 
 class CustomForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
@@ -289,9 +294,10 @@ def request_details(request, request_id=None):
     filter = RequestFilter(None)
     try:
         req_data = Request.objects.get(id=request_id)
+        updates = RequestUpdates.objects.all().filter(request_id=request_id)
     except:
         return HttpResponseRedirect("/error?error_text={}".format('Sorry, we couldnt fetch details for that request'))
-    return render(request, 'mainapp/request_details.html', {'filter' : filter, 'req': req_data })
+    return render(request, 'mainapp/request_details.html', {'filter' : filter, 'req': req_data, 'updates': updates })
 
 class DistrictManagerFilter(django_filters.FilterSet):
     class Meta:
@@ -694,3 +700,36 @@ def camp_requirements_list(request):
     page = request.GET.get('page')
     data = paginator.get_page(page)
     return render(request, "mainapp/camp_requirements_list.html", {'filter': filter , 'data' : data})
+
+class RequestUpdatesView(CreateView):
+    model = RequestUpdates
+    template_name='mainapp/request_updates.html'
+    fields = [
+        'to_status',
+        'updater_name',
+        'updater_phone',
+        'notes'
+    ]
+    success_url = '/req_updates_success/'
+    
+    def original_request(self):
+        return self.original_request
+
+    #@method_decorator(login_required)
+    def dispatch(self, request, *args, **kwargs):
+        #could not use login_required decorator because it redirects to /accounts/login and we need /login
+        #disable authentication
+        # if not request.user.is_authenticated:
+        #     return redirect('/login'+'?next=request_updates/'+kwargs['request_id']+'/')
+            
+        self.original_request = get_object_or_404(Request, pk=kwargs['request_id'])
+        return super().dispatch(request, *args, **kwargs)
+        
+    def form_valid(self, form):
+        self.object = form.save(commit=False)
+        self.object.request = self.original_request
+        self.object = form.save()
+        return HttpResponseRedirect(self.get_success_url())
+
+class ReqUpdatesSuccess(TemplateView):
+    template_name = "mainapp/request_updates_success.html"
